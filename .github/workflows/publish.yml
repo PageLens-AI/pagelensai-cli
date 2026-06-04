@@ -1,0 +1,38 @@
+name: Publish
+
+# Publishes this package to npm as @pagelensai/cli when you push a version tag
+# like `v0.1.0`. Requires an npm Granular Access Token stored as the repo secret
+# NPM_TOKEN (Read and write, scoped to @pagelensai/cli). Build provenance adds
+# the verified badge on the npm page.
+#
+# Release flow:
+#   1. Bump "version" in package.json (and the VERSION constant in pagelens.mjs).
+#   2. Commit, then: git tag v0.1.1 && git push --tags
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      # Sanity: the CLI parses and --version works before we ship it.
+      - run: node pagelens.mjs --version
+
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,40 @@
+{
+  "name": "@pagelensai/cli",
+  "version": "0.1.0",
+  "description": "PageLens AI CLI — queue website health scans from the terminal or CI.",
+  "type": "module",
+  "bin": {
+    "pagelens": "./pagelens.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "pagelens.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "author": "PageLens AI",
+  "homepage": "https://github.com/PageLens-AI/pagelensai-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PageLens-AI/pagelensai-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PageLens-AI/pagelensai-cli/issues"
+  },
+  "keywords": [
+    "pagelens",
+    "seo",
+    "audit",
+    "accessibility",
+    "web-vitals",
+    "ci",
+    "monitoring",
+    "lighthouse-alternative"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
