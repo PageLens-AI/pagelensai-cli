@@ -9,7 +9,7 @@
 
 import { writeFile } from "node:fs/promises";
 
-const VERSION = "0.1.3";
+const VERSION = "0.1.4";
 const API_BASE = (process.env.PAGELENS_API_BASE || "https://pagelensai.com").replace(/\/$/, "");
 const API_KEY = process.env.PAGELENS_API_KEY;
 const DEPTHS = ["HEALTH_WATCH", "LITE", "DEEP_AUDIT"];
@@ -30,6 +30,19 @@ const MOMENTS = ["public_post", "customer_data", "paid_traffic", "first_users"];
 const ALLOWED_DEPTHS = new Set(DEPTHS);
 const ALLOWED_BUILDERS = new Set(BUILDERS);
 const ALLOWED_MOMENTS = new Set(MOMENTS);
+const KNOWN_OPTIONS = new Set([
+  "--wait",
+  "--timeout",
+  "--depth",
+  "--builder",
+  "--ai-builder",
+  "--moment",
+  "--launch-moment",
+  "--markdown",
+  "--markdown-file",
+  "--save-markdown",
+  "--no-fail-on-regression",
+]);
 
 function fail(msg, code = 1) {
   console.error(`pagelens: ${msg}`);
@@ -113,6 +126,16 @@ function optionValue(args, names) {
   return undefined;
 }
 
+function assertKnownOptions(args) {
+  for (const arg of args) {
+    if (!arg.startsWith("--")) continue;
+    const name = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
+    if (!KNOWN_OPTIONS.has(name)) {
+      fail(`unknown option ${name}. Run "pagelens --help" for usage`);
+    }
+  }
+}
+
 async function main() {
   const [, , cmd, url, ...rest] = process.argv;
 
@@ -128,8 +151,8 @@ async function main() {
     console.log(USAGE);
     process.exit(1);
   }
-  if (!API_KEY) fail("PAGELENS_API_KEY env var is required");
 
+  assertKnownOptions(rest);
   const wait = rest.includes("--wait");
   const failOnRegression = !rest.includes("--no-fail-on-regression");
   const analysisDepth = optionValue(rest, ["--depth"]);
@@ -157,6 +180,7 @@ async function main() {
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
     fail("--timeout must be a positive number of seconds");
   }
+  if (!API_KEY) fail("PAGELENS_API_KEY env var is required");
 
   const created = await api("/api/v1/scans", {
     method: "POST",
