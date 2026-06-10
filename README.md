@@ -106,6 +106,8 @@ First-class action:
     api-key: ${{ secrets.PAGELENS_API_KEY }}
     url: https://staging.example.com
     analysis-depth: HEALTH_WATCH
+    builder-platform: codex
+    launch-moment: public_post
     wait: "true"
     timeout-seconds: "900"
 ```
