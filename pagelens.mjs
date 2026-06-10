@@ -3,13 +3,16 @@
 // Usage:
 //   PAGELENS_API_KEY=plk_live_... npx @pagelensai/cli scan https://example.com [--wait]
 //
-// Queues a Health Watch scan via the public API and (with --wait) polls until
-// it completes, printing the health score and the change diff vs the previous
-// scan. Exit code is non-zero on new critical/high findings so it can gate CI.
+// Queues a PageLens AI scan via the public API and (with --wait) polls until
+// it completes. The CLI prints the health score, compares against the previous
+// scan, and can save the agent-ready Markdown repair pack for Codex, Cursor,
+// Claude Code, Copilot, Windsurf, Lovable, Bolt, Replit, v0, or a developer.
+// Exit code is non-zero on new critical/high findings so it can gate CI.
 
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 
-const VERSION = "0.1.4";
+const VERSION = "0.1.7";
 const API_BASE = (process.env.PAGELENS_API_BASE || "https://pagelensai.com").replace(/\/$/, "");
 const API_KEY = process.env.PAGELENS_API_KEY;
 const DEPTHS = ["HEALTH_WATCH", "LITE", "DEEP_AUDIT"];
@@ -30,6 +33,25 @@ const MOMENTS = ["public_post", "customer_data", "paid_traffic", "first_users"];
 const ALLOWED_DEPTHS = new Set(DEPTHS);
 const ALLOWED_BUILDERS = new Set(BUILDERS);
 const ALLOWED_MOMENTS = new Set(MOMENTS);
+const BUILDER_LABELS = {
+  lovable: "Lovable",
+  bolt: "Bolt",
+  replit: "Replit",
+  v0: "v0",
+  cursor: "Cursor",
+  codex: "Codex",
+  claude_code: "Claude Code",
+  copilot: "GitHub Copilot",
+  windsurf: "Windsurf",
+  shopify: "Shopify",
+  other: "Other / not sure",
+};
+const MOMENT_LABELS = {
+  public_post: "Post it publicly",
+  customer_data: "Collect emails or payments",
+  paid_traffic: "Run ads or outreach",
+  first_users: "Onboard first users",
+};
 const KNOWN_OPTIONS = new Set([
   "--wait",
   "--timeout",
@@ -82,7 +104,40 @@ async function apiText(path, init = {}) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function renderLaunchContext(builderPlatform, launchMoment) {
+  return [
+    builderPlatform
+      ? `AI workflow: ${BUILDER_LABELS[builderPlatform] ?? builderPlatform}`
+      : null,
+    launchMoment
+      ? `Launch moment: ${MOMENT_LABELS[launchMoment] ?? launchMoment}`
+      : null,
+  ].filter(Boolean).join(" | ");
+}
+
+function renderLaunchVerdict(result) {
+  const verdict = result?.launchVerdict;
+  if (!verdict) return null;
+  return {
+    status: verdict.status,
+    label: verdict.label,
+    headline: verdict.headline,
+    summary: verdict.summary,
+    nextStep: verdict.nextStep,
+  };
+}
+
+async function saveMarkdown(path, markdown) {
+  const dir = dirname(path);
+  if (dir && dir !== ".") {
+    await mkdir(dir, { recursive: true });
+  }
+  await writeFile(path, markdown, "utf8");
+}
+
 const USAGE = `PageLens CLI v${VERSION}
+
+Scan -> save Markdown -> fix with your AI agent -> re-scan for proof.
 
 Usage:
   pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT]
@@ -94,16 +149,22 @@ Environment:
   PAGELENS_API_BASE  Override the API host (default https://pagelensai.com).
 
 Options:
-  --wait             Poll until the scan completes and print the score + diff.
+  --wait             Poll until the scan completes and print the score, owner verdict, and diff.
   --timeout <sec>    Maximum wait time when --wait is set (default 900).
   --depth <level>    HEALTH_WATCH (default), LITE, or DEEP_AUDIT.
   --builder <value>  AI workflow context: ${BUILDERS.join("|")}.
   --moment <value>   Launch context: ${MOMENTS.join("|")}.
-  --markdown <file>  With --wait, save the agent-ready Markdown report to a file.
+  --markdown <file>  With --wait, save the agent-ready Markdown report; parent dirs are created.
   --no-fail-on-regression
                      Do not exit 3 for new critical/high findings.
   -h, --help         Show this help.
   -v, --version      Print the CLI version.
+
+Agent repair loop:
+  pagelens scan https://example.com --wait --builder codex --moment public_post --markdown reports/pagelens.md
+  Paste the Markdown into Codex, Cursor, Claude Code, Copilot, Windsurf, Lovable,
+  Bolt, Replit, v0, or your developer. After the fixes ship, run the command
+  again to prove what improved or regressed.
 
 Exit codes: 0 ok · 1 usage/error · 2 timed out waiting · 3 new critical/high findings`;
 
@@ -193,7 +254,7 @@ async function main() {
   });
   console.log(`✓ Scan queued: ${created.scanId}`);
   if (builderPlatform || launchMoment) {
-    console.log(`  Launch context: ${builderPlatform || "unknown builder"} | ${launchMoment || "unknown moment"}`);
+    console.log(`  Launch context: ${renderLaunchContext(builderPlatform, launchMoment)}`);
   }
   console.log(`  Report: ${created.reportUrl}`);
   console.log(`  API result: ${created.resultUrl}`);
@@ -219,12 +280,18 @@ async function main() {
   }
 
   console.log(`\nHealth score: ${result.score ?? "n/a"}/100`);
+  const launchVerdict = renderLaunchVerdict(result);
+  if (launchVerdict) {
+    console.log(`Owner verdict: ${launchVerdict.label}`);
+    console.log(`  ${launchVerdict.headline}`);
+    console.log(`  ${launchVerdict.nextStep}`);
+  }
   if (result.markdownUrl) {
     console.log(`Markdown API: ${result.markdownUrl}`);
   }
   if (markdownFile) {
     const markdown = await apiText(`/api/v1/scans/${created.scanId}/markdown`);
-    await writeFile(markdownFile, markdown, "utf8");
+    await saveMarkdown(markdownFile, markdown);
     console.log(`Markdown saved: ${markdownFile}`);
   }
   if (result.diff) {

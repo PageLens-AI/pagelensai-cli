@@ -1,7 +1,7 @@
 {
   "name": "@pagelensai/cli",
-  "version": "0.1.4",
-  "description": "PageLens AI CLI - run launch-readiness scans from terminal, CI, and deploy workflows.",
+  "version": "0.1.7",
+  "description": "PageLens AI CLI - run launch reviews, save agent-ready Markdown fix packs, and re-scan for proof from terminal, CI, and deploy workflows.",
   "type": "module",
   "bin": {
     "pagelens": "./pagelens.mjs"
@@ -28,7 +28,12 @@
     "pagelens",
     "launch-readiness",
     "ai-builder",
+    "ai-agent",
+    "codex",
+    "cursor",
     "vibe-coding",
+    "launch-pack",
+    "markdown-report",
     "seo",
     "audit",
     "accessibility",

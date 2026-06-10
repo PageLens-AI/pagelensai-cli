@@ -7,7 +7,7 @@ PageLens AI has two launch paths:
 - **Launch Pack** - for founders and AI builders who want owner-first findings, AI-builder fix prompts, a Markdown export, and a re-scan before showing the site to customers.
 - **Solo+ automation** - for developers, agencies, and technical operators who want API keys, CLI scans, GitHub Actions, and deploy hooks in the release workflow.
 
-Use this package for the second path. For nontechnical repair loops, start with the Launch Pack in the web app and paste the fix prompts into Lovable, Bolt, Replit, Cursor, Codex, Claude, Copilot, or Windsurf.
+Use this package for the second path. For nontechnical repair loops, start with the Launch Pack in the web app and paste the fix prompts into Lovable, Bolt, Replit, Cursor, Codex, Claude Code, Copilot, or Windsurf.
 
 ## Install
 
@@ -45,15 +45,35 @@ pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DE
 
 | Option | Description |
 | --- | --- |
-| `--wait` | Poll until the scan completes, then print the health score and the change diff vs the previous scan. |
+| `--wait` | Poll until the scan completes, then print the health score, owner launch verdict, and the change diff vs the previous scan. |
 | `--timeout <seconds>` | Maximum wait time when `--wait` is set. Defaults to `900` seconds. |
 | `--depth <level>` | Scan depth: `HEALTH_WATCH` (default, ~0 AI cost), `LITE`, or `DEEP_AUDIT`. |
 | `--builder <value>` | Optional AI-workflow context for report/prompt framing: `lovable`, `bolt`, `replit`, `v0`, `cursor`, `codex`, `claude_code`, `copilot`, `windsurf`, `shopify`, or `other`. |
 | `--moment <value>` | Optional launch context: `public_post`, `customer_data`, `paid_traffic`, or `first_users`. |
-| `--markdown <file>` | With `--wait`, save the completed agent-ready Markdown report to a file. Aliases: `--markdown-file`, `--save-markdown`. |
+| `--markdown <file>` | With `--wait`, save the completed agent-ready Markdown report to a file. Parent directories are created automatically. Aliases: `--markdown-file`, `--save-markdown`. |
 | `--no-fail-on-regression` | Keep exit code `0` even when new critical/high findings appear. |
 | `-h, --help` | Show help. |
 | `-v, --version` | Print the CLI version. |
+
+## Agent repair loop quickstart
+
+Use this when PageLens should fit into an AI coding workflow:
+
+```bash
+pagelens scan https://example.com --wait --depth DEEP_AUDIT --builder codex --moment public_post --markdown reports/pagelens-report.md
+```
+
+That command:
+
+1. Runs a PageLens AI scan from your terminal or CI.
+2. Saves the same agent-ready Markdown repair pack available in the web report.
+3. Preserves the builder and launch moment so the fix prompts are framed for the right workflow.
+4. Prints the owner verdict (`Safe to share`, `Fix first`, etc.) before the detailed evidence so a nontechnical builder can decide what to do next.
+5. Lets you run the same command again after deployment to prove what improved, regressed, or still needs work.
+
+Paste the saved Markdown into Codex, Cursor, Claude Code, GitHub Copilot,
+Windsurf, Lovable, Bolt, Replit, v0, or your developer. The first section is
+an ordered implementation prompt; the detailed findings and evidence follow.
 
 ### Examples
 
@@ -74,7 +94,7 @@ pagelens scan https://example.com --wait --depth DEEP_AUDIT
 pagelens scan https://example.com --wait --depth DEEP_AUDIT --builder codex --moment public_post
 
 # Save the ready-to-paste repair pack for your coding agent
-pagelens scan https://example.com --wait --builder codex --moment public_post --markdown pagelens-report.md
+pagelens scan https://example.com --wait --builder codex --moment public_post --markdown reports/pagelens-report.md
 ```
 
 `--builder` and `--moment` do not change scoring, crawl coverage, or severity.
