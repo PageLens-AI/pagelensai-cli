@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // ─── PageLens CLI ────────────────────────────────────────────────────────────
 // Usage:
-//   PAGELENS_API_KEY=plk_live_… npx @pagelensai/cli scan https://example.com [--wait]
+//   PAGELENS_API_KEY=plk_live_... npx @pagelensai/cli scan https://example.com [--wait]
 //
 // Queues a Health Watch scan via the public API and (with --wait) polls until
 // it completes, printing the health score and the change diff vs the previous
 // scan. Exit code is non-zero on new critical/high findings so it can gate CI.
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const API_BASE = (process.env.PAGELENS_API_BASE || "https://pagelensai.com").replace(/\/$/, "");
 const API_KEY = process.env.PAGELENS_API_KEY;
 const ALLOWED_DEPTHS = new Set(["HEALTH_WATCH", "LITE", "DEEP_AUDIT"]);
@@ -41,8 +41,8 @@ Usage:
   pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT]
 
 Environment:
-  PAGELENS_API_KEY   API key (plk_live_…). Required. Create one at
-                     <app>/settings/integrations.
+  PAGELENS_API_KEY   API key (plk_live_...). Required on Solo+ automation.
+                     Create one at <app>/settings/integrations.
   PAGELENS_API_BASE  Override the API host (default https://pagelensai.com).
 
 Options:
