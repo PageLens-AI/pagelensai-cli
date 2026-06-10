@@ -40,7 +40,7 @@ export PAGELENS_API_KEY=plk_live_xxxxxxxxxxxxxxxxxxxxx
 ## Usage
 
 ```bash
-pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT]
+pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT] [--builder <value>] [--moment <value>]
 ```
 
 | Option | Description |
@@ -48,6 +48,8 @@ pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DE
 | `--wait` | Poll until the scan completes, then print the health score and the change diff vs the previous scan. |
 | `--timeout <seconds>` | Maximum wait time when `--wait` is set. Defaults to `900` seconds. |
 | `--depth <level>` | Scan depth: `HEALTH_WATCH` (default, ~0 AI cost), `LITE`, or `DEEP_AUDIT`. |
+| `--builder <value>` | Optional AI-workflow context for report/prompt framing: `lovable`, `bolt`, `replit`, `v0`, `cursor`, `codex`, `claude_code`, `copilot`, `windsurf`, `shopify`, or `other`. |
+| `--moment <value>` | Optional launch context: `public_post`, `customer_data`, `paid_traffic`, or `first_users`. |
 | `--no-fail-on-regression` | Keep exit code `0` even when new critical/high findings appear. |
 | `-h, --help` | Show help. |
 | `-v, --version` | Print the CLI version. |
@@ -66,7 +68,15 @@ pagelens scan https://example.com --wait --timeout 1200 --no-fail-on-regression
 
 # Deeper AI audit
 pagelens scan https://example.com --wait --depth DEEP_AUDIT
+
+# Deep audit framed for a Codex-built launch before a public post
+pagelens scan https://example.com --wait --depth DEEP_AUDIT --builder codex --moment public_post
 ```
+
+`--builder` and `--moment` do not change scoring, crawl coverage, or severity.
+They tell PageLens how to frame summaries and fix prompts so the same evidence
+works for a coding agent and for the site owner who is deciding whether it is
+safe to launch.
 
 ## Exit codes
 

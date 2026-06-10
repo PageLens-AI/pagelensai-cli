@@ -1,6 +1,6 @@
 {
   "name": "@pagelensai/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "PageLens AI CLI - run launch-readiness scans from terminal, CI, and deploy workflows.",
   "type": "module",
   "bin": {

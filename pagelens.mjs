@@ -7,10 +7,27 @@
 // it completes, printing the health score and the change diff vs the previous
 // scan. Exit code is non-zero on new critical/high findings so it can gate CI.
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 const API_BASE = (process.env.PAGELENS_API_BASE || "https://pagelensai.com").replace(/\/$/, "");
 const API_KEY = process.env.PAGELENS_API_KEY;
-const ALLOWED_DEPTHS = new Set(["HEALTH_WATCH", "LITE", "DEEP_AUDIT"]);
+const DEPTHS = ["HEALTH_WATCH", "LITE", "DEEP_AUDIT"];
+const BUILDERS = [
+  "lovable",
+  "bolt",
+  "replit",
+  "v0",
+  "cursor",
+  "codex",
+  "claude_code",
+  "copilot",
+  "windsurf",
+  "shopify",
+  "other",
+];
+const MOMENTS = ["public_post", "customer_data", "paid_traffic", "first_users"];
+const ALLOWED_DEPTHS = new Set(DEPTHS);
+const ALLOWED_BUILDERS = new Set(BUILDERS);
+const ALLOWED_MOMENTS = new Set(MOMENTS);
 
 function fail(msg, code = 1) {
   console.error(`pagelens: ${msg}`);
@@ -39,6 +56,7 @@ const USAGE = `PageLens CLI v${VERSION}
 
 Usage:
   pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT]
+                       [--builder <value>] [--moment <value>]
 
 Environment:
   PAGELENS_API_KEY   API key (plk_live_...). Required on Solo+ automation.
@@ -49,12 +67,33 @@ Options:
   --wait             Poll until the scan completes and print the score + diff.
   --timeout <sec>    Maximum wait time when --wait is set (default 900).
   --depth <level>    HEALTH_WATCH (default), LITE, or DEEP_AUDIT.
+  --builder <value>  AI workflow context: ${BUILDERS.join("|")}.
+  --moment <value>   Launch context: ${MOMENTS.join("|")}.
   --no-fail-on-regression
                      Do not exit 3 for new critical/high findings.
   -h, --help         Show this help.
   -v, --version      Print the CLI version.
 
 Exit codes: 0 ok · 1 usage/error · 2 timed out waiting · 3 new critical/high findings`;
+
+function optionValue(args, names) {
+  for (let i = 0; i < args.length; i += 1) {
+    for (const name of names) {
+      if (args[i] === name) {
+        const value = args[i + 1];
+        if (!value || value.startsWith("--")) fail(`${name} requires a value`);
+        return value;
+      }
+      const prefix = `${name}=`;
+      if (args[i].startsWith(prefix)) {
+        const value = args[i].slice(prefix.length).trim();
+        if (!value) fail(`${name} requires a value`);
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
 
 async function main() {
   const [, , cmd, url, ...rest] = process.argv;
@@ -75,23 +114,37 @@ async function main() {
 
   const wait = rest.includes("--wait");
   const failOnRegression = !rest.includes("--no-fail-on-regression");
-  const depthIdx = rest.indexOf("--depth");
-  const analysisDepth = depthIdx >= 0 ? rest[depthIdx + 1] : undefined;
-  if (depthIdx >= 0 && !ALLOWED_DEPTHS.has(analysisDepth)) {
-    fail(`--depth must be one of ${[...ALLOWED_DEPTHS].join(", ")}`);
+  const analysisDepth = optionValue(rest, ["--depth"]);
+  if (analysisDepth && !ALLOWED_DEPTHS.has(analysisDepth)) {
+    fail(`--depth must be one of ${DEPTHS.join(", ")}`);
   }
-  const timeoutIdx = rest.indexOf("--timeout");
-  const timeoutSeconds =
-    timeoutIdx >= 0 ? Number.parseInt(rest[timeoutIdx + 1] ?? "", 10) : 900;
+  const builderPlatform = optionValue(rest, ["--builder", "--ai-builder"]);
+  if (builderPlatform && !ALLOWED_BUILDERS.has(builderPlatform)) {
+    fail(`--builder must be one of ${BUILDERS.join(", ")}`);
+  }
+  const launchMoment = optionValue(rest, ["--moment", "--launch-moment"]);
+  if (launchMoment && !ALLOWED_MOMENTS.has(launchMoment)) {
+    fail(`--moment must be one of ${MOMENTS.join(", ")}`);
+  }
+  const timeoutValue = optionValue(rest, ["--timeout"]);
+  const timeoutSeconds = timeoutValue ? Number.parseInt(timeoutValue, 10) : 900;
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
     fail("--timeout must be a positive number of seconds");
   }
 
   const created = await api("/api/v1/scans", {
     method: "POST",
-    body: JSON.stringify({ url, ...(analysisDepth ? { analysisDepth } : {}) }),
+    body: JSON.stringify({
+      url,
+      ...(analysisDepth ? { analysisDepth } : {}),
+      ...(builderPlatform ? { builderPlatform } : {}),
+      ...(launchMoment ? { launchMoment } : {}),
+    }),
   });
   console.log(`✓ Scan queued: ${created.scanId}`);
+  if (builderPlatform || launchMoment) {
+    console.log(`  Launch context: ${builderPlatform || "unknown builder"} | ${launchMoment || "unknown moment"}`);
+  }
   console.log(`  Report: ${created.reportUrl}`);
   console.log(`  API result: ${created.resultUrl}`);
 
