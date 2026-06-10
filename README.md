@@ -40,7 +40,7 @@ export PAGELENS_API_KEY=plk_live_xxxxxxxxxxxxxxxxxxxxx
 ## Usage
 
 ```bash
-pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT] [--builder <value>] [--moment <value>]
+pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT] [--builder <value>] [--moment <value>] [--markdown <file>]
 ```
 
 | Option | Description |
@@ -50,6 +50,7 @@ pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DE
 | `--depth <level>` | Scan depth: `HEALTH_WATCH` (default, ~0 AI cost), `LITE`, or `DEEP_AUDIT`. |
 | `--builder <value>` | Optional AI-workflow context for report/prompt framing: `lovable`, `bolt`, `replit`, `v0`, `cursor`, `codex`, `claude_code`, `copilot`, `windsurf`, `shopify`, or `other`. |
 | `--moment <value>` | Optional launch context: `public_post`, `customer_data`, `paid_traffic`, or `first_users`. |
+| `--markdown <file>` | With `--wait`, save the completed agent-ready Markdown report to a file. Aliases: `--markdown-file`, `--save-markdown`. |
 | `--no-fail-on-regression` | Keep exit code `0` even when new critical/high findings appear. |
 | `-h, --help` | Show help. |
 | `-v, --version` | Print the CLI version. |
@@ -71,12 +72,20 @@ pagelens scan https://example.com --wait --depth DEEP_AUDIT
 
 # Deep audit framed for a Codex-built launch before a public post
 pagelens scan https://example.com --wait --depth DEEP_AUDIT --builder codex --moment public_post
+
+# Save the ready-to-paste repair pack for your coding agent
+pagelens scan https://example.com --wait --builder codex --moment public_post --markdown pagelens-report.md
 ```
 
 `--builder` and `--moment` do not change scoring, crawl coverage, or severity.
 They tell PageLens how to frame summaries and fix prompts so the same evidence
 works for a coding agent and for the site owner who is deciding whether it is
 safe to launch.
+
+The saved Markdown starts with an AI-builder priority prompt pack. Paste it
+into Codex, Cursor, Claude Code, Copilot, Windsurf, Lovable, Bolt, Replit, v0,
+or your existing coding assistant to work through the highest-priority fixes in
+order.
 
 ## Exit codes
 
@@ -110,9 +119,13 @@ First-class action:
     launch-moment: public_post
     wait: "true"
     timeout-seconds: "900"
+    markdown-path: pagelens-report.md
 ```
 
 The step fails (exit `3`) if the deploy introduced a new critical/high issue, blocking the merge/release.
+When `markdown-path` is set, the action saves the same agent-ready Markdown
+repair pack the CLI `--markdown` flag downloads; pair it with
+`actions/upload-artifact` or pass it to a later AI-review step.
 
 For production workflows, pin the action to a release tag once your chosen tag exists instead of relying on a moving branch. The `@main` example is useful while integrating or testing the action.
 

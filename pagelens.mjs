@@ -7,7 +7,9 @@
 // it completes, printing the health score and the change diff vs the previous
 // scan. Exit code is non-zero on new critical/high findings so it can gate CI.
 
-const VERSION = "0.1.2";
+import { writeFile } from "node:fs/promises";
+
+const VERSION = "0.1.3";
 const API_BASE = (process.env.PAGELENS_API_BASE || "https://pagelensai.com").replace(/\/$/, "");
 const API_KEY = process.env.PAGELENS_API_KEY;
 const DEPTHS = ["HEALTH_WATCH", "LITE", "DEEP_AUDIT"];
@@ -50,13 +52,28 @@ async function api(path, init = {}) {
   return data;
 }
 
+async function apiText(path, init = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      authorization: `Bearer ${API_KEY}`,
+      ...(init.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || `HTTP ${res.status}`);
+  }
+  return res.text();
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const USAGE = `PageLens CLI v${VERSION}
 
 Usage:
   pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT]
-                       [--builder <value>] [--moment <value>]
+                       [--builder <value>] [--moment <value>] [--markdown <file>]
 
 Environment:
   PAGELENS_API_KEY   API key (plk_live_...). Required on Solo+ automation.
@@ -69,6 +86,7 @@ Options:
   --depth <level>    HEALTH_WATCH (default), LITE, or DEEP_AUDIT.
   --builder <value>  AI workflow context: ${BUILDERS.join("|")}.
   --moment <value>   Launch context: ${MOMENTS.join("|")}.
+  --markdown <file>  With --wait, save the agent-ready Markdown report to a file.
   --no-fail-on-regression
                      Do not exit 3 for new critical/high findings.
   -h, --help         Show this help.
@@ -126,6 +144,14 @@ async function main() {
   if (launchMoment && !ALLOWED_MOMENTS.has(launchMoment)) {
     fail(`--moment must be one of ${MOMENTS.join(", ")}`);
   }
+  const markdownFile = optionValue(rest, [
+    "--markdown",
+    "--markdown-file",
+    "--save-markdown",
+  ]);
+  if (markdownFile && !wait) {
+    fail("--markdown requires --wait so the report is complete before download");
+  }
   const timeoutValue = optionValue(rest, ["--timeout"]);
   const timeoutSeconds = timeoutValue ? Number.parseInt(timeoutValue, 10) : 900;
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
@@ -147,6 +173,9 @@ async function main() {
   }
   console.log(`  Report: ${created.reportUrl}`);
   console.log(`  API result: ${created.resultUrl}`);
+  if (created.markdownUrl) {
+    console.log(`  Markdown API: ${created.markdownUrl}`);
+  }
 
   if (!wait) return;
 
@@ -166,6 +195,14 @@ async function main() {
   }
 
   console.log(`\nHealth score: ${result.score ?? "n/a"}/100`);
+  if (result.markdownUrl) {
+    console.log(`Markdown API: ${result.markdownUrl}`);
+  }
+  if (markdownFile) {
+    const markdown = await apiText(`/api/v1/scans/${created.scanId}/markdown`);
+    await writeFile(markdownFile, markdown, "utf8");
+    console.log(`Markdown saved: ${markdownFile}`);
+  }
   if (result.diff) {
     const { added, resolved, persisting } = result.diff;
     console.log(`Changes vs last scan: +${added} new, -${resolved} resolved, ${persisting} persisting`);
