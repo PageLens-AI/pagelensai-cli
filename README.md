@@ -5,7 +5,7 @@ Run [PageLens AI](https://pagelensai.com) launch reviews from your terminal, CI,
 PageLens AI has two launch paths:
 
 - **Launch Pack** - for founders and AI builders who want owner-first findings, AI-builder fix prompts, a Markdown export, and a re-scan before showing the site to customers.
-- **Solo+ automation** - for developers, agencies, and technical operators who want API keys, CLI scans, GitHub Actions, and deploy hooks in the release workflow.
+- **Pro+ automation** - for developers, agencies, and technical operators who want API keys, CLI scans, GitHub Actions, and deploy hooks in the release workflow.
 
 Use this package for the second path. For nontechnical repair loops, start with the Launch Pack in the web app and paste the fix prompts into Lovable, Bolt, Replit, Cursor, Codex, Claude Code, Copilot, or Windsurf.
 
@@ -26,7 +26,7 @@ pagelens scan https://example.com
 
 ## Authentication
 
-Create an API key at **Settings -> Integrations -> Developer access** (format `plk_live_...`) and expose it as an environment variable. API keys are available on **Solo, Pro, and Agency** plans.
+Create an API key at **Settings -> Integrations -> Developer access** (format `plk_live_...`) and expose it as an environment variable. API keys are available on **Pro and Agency** plans.
 
 ```bash
 export PAGELENS_API_KEY=plk_live_xxxxxxxxxxxxxxxxxxxxx

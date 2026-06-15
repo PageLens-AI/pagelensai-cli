@@ -144,7 +144,7 @@ Usage:
                        [--builder <value>] [--moment <value>] [--markdown <file>]
 
 Environment:
-  PAGELENS_API_KEY   API key (plk_live_...). Required on Solo+ automation.
+  PAGELENS_API_KEY   API key (plk_live_...). Required on Pro+ automation.
                      Create one at <app>/settings/integrations.
   PAGELENS_API_BASE  Override the API host (default https://pagelensai.com).
 
