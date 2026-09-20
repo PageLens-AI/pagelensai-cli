@@ -37,6 +37,20 @@ export PAGELENS_API_KEY=plk_live_xxxxxxxxxxxxxxxxxxxxx
 | `PAGELENS_API_KEY` | Yes | - | Your API key. |
 | `PAGELENS_API_BASE` | No | `https://pagelensai.com` | Override the API host (self-hosted / staging). |
 
+## Connected product reviews
+
+An active Product, Studio, or Agency workspace member can create a **Product reviews** API key in **Settings → Integrations**. This key reads reports with the same workspace permissions as the web app. It cannot start a review, use credits, or trigger a scan. Existing scan keys cannot read product evidence.
+
+```bash
+PAGELENS_API_KEY=plk_live_... pagelens reviews
+pagelens reviews --workspace my-product --limit 20
+pagelens review <analysis-id>
+pagelens review <analysis-id> --markdown reports/connected-review.md
+pagelens review <analysis-id> --json
+```
+
+`reviews` lists accessible analyses across your workspaces. `review` shows the verdict, limitations and editable proposed changes. `--json` prints the source-linked analysis contract, including evidence excerpts; handle it as private customer data. Markdown export is available for completed, non-refunded paid reviews. The CLI checks access on every request through the API.
+
 ## Usage
 
 ```bash
