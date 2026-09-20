@@ -1,10 +1,13 @@
 {
   "name": "@pagelensai/cli",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "PageLens AI CLI - run launch reviews, save agent-ready Markdown fix packs, and re-scan for proof from terminal, CI, and deploy workflows.",
   "type": "module",
   "bin": {
     "pagelens": "./pagelens.mjs"
+  },
+  "scripts": {
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"

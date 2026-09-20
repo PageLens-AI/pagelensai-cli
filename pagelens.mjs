@@ -12,7 +12,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-const VERSION = "0.1.7";
+const VERSION = "0.1.8";
 const API_BASE = (process.env.PAGELENS_API_BASE || "https://pagelensai.com").replace(/\/$/, "");
 const API_KEY = process.env.PAGELENS_API_KEY;
 const DEPTHS = ["HEALTH_WATCH", "LITE", "DEEP_AUDIT"];
@@ -65,6 +65,8 @@ const KNOWN_OPTIONS = new Set([
   "--save-markdown",
   "--no-fail-on-regression",
 ]);
+const PRODUCT_LIST_VALUE_OPTIONS = new Set(["--workspace", "--limit"]);
+const PRODUCT_DETAIL_VALUE_OPTIONS = new Set(["--markdown"]);
 
 function fail(msg, code = 1) {
   console.error(`pagelens: ${msg}`);
@@ -142,11 +144,14 @@ Scan -> save Markdown -> fix with your AI agent -> re-scan for proof.
 Usage:
   pagelens scan <url> [--wait] [--timeout <seconds>] [--depth HEALTH_WATCH|LITE|DEEP_AUDIT]
                        [--builder <value>] [--moment <value>] [--markdown <file>]
+  pagelens reviews [--workspace <slug>] [--limit <1-50>] [--json]
+  pagelens review <analysis-id> [--markdown <file>] [--json]
 
 Environment:
   PAGELENS_API_KEY   API key (plk_live_...). Required on Pro+ automation.
                      Create one at <app>/settings/integrations.
   PAGELENS_API_BASE  Override the API host (default https://pagelensai.com).
+  Product review commands require a separate product-review key. Scan keys cannot read product evidence.
 
 Options:
   --wait             Poll until the scan completes and print the score, owner verdict, and diff.
@@ -167,6 +172,66 @@ Agent repair loop:
   again to prove what improved or regressed.
 
 Exit codes: 0 ok · 1 usage/error · 2 timed out waiting · 3 new critical/high findings`;
+
+function parseProductOptions(args, valueOptions) {
+  const options = {};
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--json") { options.json = true; continue; }
+    if (!argument.startsWith("--")) fail(`unexpected argument ${argument}`);
+    const separator = argument.indexOf("=");
+    const name = separator === -1 ? argument : argument.slice(0, separator);
+    if (!valueOptions.has(name)) fail(`unknown option ${name} for product reviews`);
+    const value = separator === -1 ? args[++index] : argument.slice(separator + 1);
+    if (!value || value.startsWith("--")) fail(`${name} requires a value`);
+    if (options[name] !== undefined) fail(`${name} was supplied twice`);
+    options[name] = value;
+  }
+  return options;
+}
+
+async function listProductReviews(args) {
+  const options = parseProductOptions(args, PRODUCT_LIST_VALUE_OPTIONS);
+  if (!API_KEY) fail("PAGELENS_API_KEY env var is required");
+  const limit = options["--limit"] === undefined ? 20 : Number(options["--limit"]);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) fail("--limit must be 1 to 50");
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (options["--workspace"]) query.set("workspace", options["--workspace"]);
+  const result = await api(`/api/v1/product-analyses?${query}`);
+  if (options.json) { console.log(JSON.stringify(result, null, 2)); return; }
+  if (!result.analyses?.length) { console.log("No connected product reviews found."); return; }
+  for (const review of result.analyses) {
+    console.log(`${review.createdAt?.slice(0, 10) || "unknown date"}  ${review.status}  ${review.templateKey}  ${review.workspaceSlug}  ${review.id}`);
+  }
+}
+
+async function showProductReview(id, args) {
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) fail("invalid analysis ID");
+  const options = parseProductOptions(args, PRODUCT_DETAIL_VALUE_OPTIONS);
+  if (!API_KEY) fail("PAGELENS_API_KEY env var is required");
+  const result = await api(`/api/v1/product-analyses/${encodeURIComponent(id)}`);
+  if (options["--markdown"]) {
+    if (result.status !== "COMPLETE" || !result.actions?.exportUrl) {
+      fail("Markdown is available only for a completed, non-refunded connected review");
+    }
+    const markdown = await apiText(`/api/v1/product-analyses/${encodeURIComponent(id)}/markdown`);
+    await saveMarkdown(options["--markdown"], markdown);
+  }
+  if (options.json) console.log(JSON.stringify(result, null, 2));
+  else {
+    console.log(`${result.template?.key || "Connected review"} · ${result.status} · ${result.market || ""}`);
+    console.log(`Analysis: ${result.id}`);
+    if (result.verdict) console.log(`Verdict: ${result.verdict}`);
+    if (result.noChangeReason) console.log(`No change: ${result.noChangeReason}`);
+    for (const improvement of result.improvements || []) {
+      console.log(`- [${improvement.severity}] ${improvement.title}`);
+      console.log(`  Change: ${improvement.proposedChange}`);
+    }
+    for (const limit of result.limitations || []) console.log(`Limit: ${limit}`);
+    if (result.actions?.reportUrl) console.log(`Report: ${API_BASE}${result.actions.reportUrl}`);
+    if (options["--markdown"]) console.log(`Markdown saved: ${options["--markdown"]}`);
+  }
+}
 
 function optionValue(args, names) {
   for (let i = 0; i < args.length; i += 1) {
@@ -206,6 +271,12 @@ async function main() {
   }
   if (!cmd || cmd === "--help" || cmd === "-h" || cmd === "help") {
     console.log(USAGE);
+    return;
+  }
+  if (cmd === "reviews") { await listProductReviews([url, ...rest].filter((value) => value !== undefined)); return; }
+  if (cmd === "review") {
+    if (!url) fail("review requires an analysis ID");
+    await showProductReview(url, rest);
     return;
   }
   if (cmd !== "scan" || !url) {
